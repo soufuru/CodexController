@@ -10,4 +10,6 @@ swift build
 
 echo "CodexBridge Desktop shared mode"
 echo "Keep this Terminal window open. Press Control-C to stop."
-CODEX_DESKTOP_SHARED=1 .build/debug/CodexBridge
+log_path="${TMPDIR:-/tmp}/CodexBridge.log"
+echo "Diagnostic log: $log_path"
+CODEX_DESKTOP_SHARED=1 .build/debug/CodexBridge 2>&1 | tee "$log_path"

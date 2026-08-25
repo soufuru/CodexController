@@ -14,10 +14,21 @@ final class BLEPeripheralController: NSObject, ObservableObject {
     private var commandCharacteristic: CBMutableCharacteristic?
     private var statusCharacteristic: CBMutableCharacteristic?
     private var pendingCommand: Data?
+    private var lastBridgeActivity: Date?
+    private var connectionWatchdog: Timer?
+
+    private static let bridgeTimeout: TimeInterval = 6
 
     override init() {
         super.init()
         manager = CBPeripheralManager(delegate: self, queue: nil)
+        connectionWatchdog = Timer.scheduledTimer(
+            timeInterval: 1,
+            target: self,
+            selector: #selector(checkBridgeHeartbeat),
+            userInfo: nil,
+            repeats: true
+        )
     }
 
     func send(_ command: CodexCommand) {
@@ -55,6 +66,9 @@ final class BLEPeripheralController: NSObject, ObservableObject {
 
     private func applyStatusPacket(_ data: Data) {
         guard let statusByte = data.first, let nextStatus = CodexStatus(rawValue: statusByte) else { return }
+        lastBridgeActivity = Date()
+        isConnected = true
+        bluetoothState = "Connected"
         status = nextStatus
         if data.count > 1, let nextReasoning = ReasoningLevel(rawValue: data[data.startIndex + 1]) {
             reasoning = nextReasoning
@@ -62,6 +76,20 @@ final class BLEPeripheralController: NSObject, ObservableObject {
         if data.count > 2, let nextModel = CodexModel(rawValue: data[data.startIndex + 2]) {
             model = nextModel
         }
+    }
+
+    private func expireStaleConnection(now: Date = Date()) {
+        guard isConnected,
+              let lastBridgeActivity,
+              now.timeIntervalSince(lastBridgeActivity) > Self.bridgeTimeout else { return }
+        self.lastBridgeActivity = nil
+        isConnected = false
+        bluetoothState = "Waiting for bridge"
+        status = .disconnected
+    }
+
+    @objc private func checkBridgeHeartbeat() {
+        expireStaleConnection()
     }
 }
 
@@ -103,6 +131,7 @@ extension BLEPeripheralController: CBPeripheralManagerDelegate {
             isConnected = true
             bluetoothState = "Connected"
             status = .idle
+            lastBridgeActivity = Date()
         }
     }
 
@@ -115,6 +144,7 @@ extension BLEPeripheralController: CBPeripheralManagerDelegate {
             isConnected = false
             bluetoothState = "Advertising"
             status = .disconnected
+            lastBridgeActivity = nil
         }
     }
 

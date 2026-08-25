@@ -57,7 +57,7 @@ iPhoneアプリの画面外周はCodexの状態に連動します。処理中お
 複数threadを同時にロードしている場合は、誤操作を避けるため対象を固定できます。
 
 ```sh
-CODEX_THREAD_ID=019... swift run CodexBridge
+CODEX_BRIDGE_THREAD_ID=019... swift run CodexBridge
 ```
 
 Finderやlaunchdから起動する場合、`CODEX_BIN=/opt/homebrew/bin/codex` でCLIパスを明示できます。初回はmacOSのBluetooth権限を許可してください。

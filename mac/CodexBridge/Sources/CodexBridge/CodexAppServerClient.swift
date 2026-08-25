@@ -168,7 +168,11 @@ final class CodexAppServerClient: @unchecked Sendable {
             return
         }
 
-        if let pinned = ProcessInfo.processInfo.environment["CODEX_THREAD_ID"], !pinned.isEmpty {
+        // `CODEX_THREAD_ID` is injected by Codex itself and can point at the
+        // task which launched this bridge rather than the task focused now.
+        // Use a bridge-specific opt-in variable so ambient Codex state cannot
+        // silently pin every command to an old task.
+        if let pinned = ProcessInfo.processInfo.environment["CODEX_BRIDGE_THREAD_ID"], !pinned.isEmpty {
             selectedThreadID = pinned
             return apply(command, to: pinned)
         }

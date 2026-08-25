@@ -7,12 +7,17 @@ final class BLECentral: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate
     private var statusCharacteristic: CBCharacteristic?
     private let appServer: CodexAppServerClient
     private var pendingStatus = StatusPacket(status: .disconnected, effort: .unknown, model: .unknown)
+    private var heartbeatTimer: Timer?
 
     init(appServer: CodexAppServerClient) {
         self.appServer = appServer
         super.init()
         appServer.onStatus = { [weak self] packet in self?.write(packet) }
         manager = CBCentralManager(delegate: self, queue: .main)
+        heartbeatTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            write(pendingStatus)
+        }
     }
 
     func centralManagerDidUpdateState(_ central: CBCentralManager) {

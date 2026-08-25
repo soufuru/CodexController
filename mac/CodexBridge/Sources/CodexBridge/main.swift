@@ -1,4 +1,8 @@
 import Foundation
+import Darwin
+
+setbuf(stdout, nil)
+setbuf(stderr, nil)
 
 let appServer = CodexAppServerClient()
 do {
