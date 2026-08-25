@@ -24,14 +24,16 @@ Codex Desktopを操作する実験構成では、DesktopとBridgeが同じUnix-d
 iPhone -- BLE --> CodexBridge -- WebSocket/Unix socket --> shared app-server <-- Codex Desktop
 ```
 
-BLE UUIDと1-byte commandはiOS/Macで共通です。状態packetは `[status, reasoning, model]` の3 byteです。
+BLE UUIDと1-byte commandはiOS/Macで共通です。状態packetは `[status, reasoning, model, executionMode]` の4 byteです。
 
 iPhoneアプリの画面外周はCodexの状態に連動します。処理中および通常のユーザー入力待ちは青、承認待ちは黄、ターン完了後は緑です。
 
 | Command | Byte | app-server操作 |
 |---|---:|---|
-| Fast | `0x01` | `thread/settings/update` の `serviceTier = "priority"` |
-| Deep | `0x03` | `serviceTier = null`, `effort = "high"` |
+| Fast On | `0x01` | `thread/settings/update` の `serviceTier = "priority"` |
+| Deep On | `0x03` | `effort = "high"` |
+| Fast Off | `0x04` | `serviceTier = null` |
+| Deep Off | `0x05` | `effort = "medium"` |
 | Sol | `0x20` | `model = "gpt-5.6-sol"` |
 | Terra | `0x21` | `model = "gpt-5.6-terra"` |
 | Luna | `0x22` | `model = "gpt-5.6-luna"` |

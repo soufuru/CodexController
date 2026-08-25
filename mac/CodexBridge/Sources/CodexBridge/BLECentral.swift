@@ -6,7 +6,12 @@ final class BLECentral: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate
     private var peripheral: CBPeripheral?
     private var statusCharacteristic: CBCharacteristic?
     private let appServer: CodexAppServerClient
-    private var pendingStatus = StatusPacket(status: .disconnected, effort: .unknown, model: .unknown)
+    private var pendingStatus = StatusPacket(
+        status: .disconnected,
+        effort: .unknown,
+        model: .unknown,
+        executionMode: .unknown
+    )
     private var heartbeatTimer: Timer?
 
     init(appServer: CodexAppServerClient) {

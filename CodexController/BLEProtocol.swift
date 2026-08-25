@@ -11,6 +11,8 @@ enum CodexCommand: UInt8 {
     case fast = 0x01
     case normal = 0x02
     case deep = 0x03
+    case fastOff = 0x04
+    case deepOff = 0x05
     case newTask = 0x10
     case review = 0x11
     case stop = 0x12
@@ -55,6 +57,32 @@ enum ReasoningLevel: UInt8, Sendable {
         case .medium: "Medium"
         case .high: "High"
         case .xhigh: "Extra High"
+        }
+    }
+}
+
+enum ExecutionMode: UInt8, Sendable {
+    case unknown = 0x00
+    case standard = 0x01
+    case fast = 0x02
+    case deep = 0x03
+    case fastAndDeep = 0x04
+
+    var isFastEnabled: Bool {
+        self == .fast || self == .fastAndDeep
+    }
+
+    var isDeepEnabled: Bool {
+        self == .deep || self == .fastAndDeep
+    }
+
+    var label: String {
+        switch self {
+        case .unknown: "Unknown"
+        case .standard: "Standard"
+        case .fast: "Fast"
+        case .deep: "Deep"
+        case .fastAndDeep: "Fast + Deep"
         }
     }
 }

@@ -83,12 +83,15 @@ struct ContentView: View {
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 4) {
-                Text("REASONING")
+                Text("MODE")
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(.secondary)
-                Text(bluetooth.reasoning.label)
+                Text(bluetooth.executionMode.label.uppercased())
                     .font(.subheadline.monospaced().weight(.semibold))
                     .foregroundStyle(.white.opacity(0.88))
+                Text("Reasoning: \(bluetooth.reasoning.label)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(18)
@@ -99,11 +102,23 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionTitle(title: "Execution mode", subtitle: "Choose speed or deeper reasoning")
             HStack(spacing: 12) {
-                ModeButton(title: "FAST", detail: "Priority speed", symbol: "bolt.fill", color: .orange) {
-                    bluetooth.send(.fast)
+                ModeButton(
+                    title: "FAST",
+                    detail: bluetooth.executionMode.isFastEnabled ? "Tap to turn off" : "Priority speed",
+                    symbol: "bolt.fill",
+                    color: .orange,
+                    isSelected: bluetooth.executionMode.isFastEnabled
+                ) {
+                    bluetooth.toggleFast()
                 }
-                ModeButton(title: "DEEP", detail: "High reasoning", symbol: "brain.head.profile.fill", color: .indigo) {
-                    bluetooth.send(.deep)
+                ModeButton(
+                    title: "DEEP",
+                    detail: bluetooth.executionMode.isDeepEnabled ? "Tap to turn off" : "High reasoning",
+                    symbol: "brain.head.profile.fill",
+                    color: .indigo,
+                    isSelected: bluetooth.executionMode.isDeepEnabled
+                ) {
+                    bluetooth.toggleDeep()
                 }
             }
             .disabled(!bluetooth.isConnected)
@@ -188,6 +203,7 @@ private struct ModeButton: View {
     let detail: String
     let symbol: String
     let color: Color
+    let isSelected: Bool
     let action: () -> Void
 
     var body: some View {
@@ -198,6 +214,14 @@ private struct ModeButton: View {
                     .foregroundStyle(color)
                     .frame(width: 42, height: 42)
                     .background(color.opacity(0.16), in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(alignment: .topTrailing) {
+                        if isSelected {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.white)
+                                .offset(x: 5, y: -5)
+                        }
+                    }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title).font(.title3.weight(.black))
                     Text(detail).font(.caption).foregroundStyle(.secondary)
@@ -206,8 +230,10 @@ private struct ModeButton: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(15)
         }
-        .buttonStyle(ModeButtonStyle(color: color))
+        .buttonStyle(ModeButtonStyle(color: color, isSelected: isSelected))
+        .accessibilityLabel("Select \(title) execution mode")
         .accessibilityHint(detail)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
@@ -275,17 +301,29 @@ private extension CodexModel {
 
 private struct ModeButtonStyle: ButtonStyle {
     let color: Color
+    let isSelected: Bool
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .background(
-                LinearGradient(colors: [color.opacity(0.17), color.opacity(0.07)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                LinearGradient(
+                    colors: isSelected
+                        ? [color.opacity(0.48), color.opacity(0.22)]
+                        : [color.opacity(0.17), color.opacity(0.07)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
                 in: RoundedRectangle(cornerRadius: 17, style: .continuous)
             )
-            .overlay { RoundedRectangle(cornerRadius: 17, style: .continuous).stroke(color.opacity(0.28), lineWidth: 1) }
+            .overlay {
+                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                    .stroke(isSelected ? color : color.opacity(0.28), lineWidth: isSelected ? 2 : 1)
+            }
+            .shadow(color: isSelected ? color.opacity(0.3) : .clear, radius: 8)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .brightness(configuration.isPressed ? -0.05 : 0)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(.easeInOut(duration: 0.2), value: isSelected)
     }
 }
 

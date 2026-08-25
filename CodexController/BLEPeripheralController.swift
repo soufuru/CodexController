@@ -9,6 +9,7 @@ final class BLEPeripheralController: NSObject, ObservableObject {
     @Published private(set) var status: CodexStatus = .disconnected
     @Published private(set) var reasoning: ReasoningLevel = .unknown
     @Published private(set) var model: CodexModel = .unknown
+    @Published private(set) var executionMode: ExecutionMode = .unknown
 
     private var manager: CBPeripheralManager!
     private var commandCharacteristic: CBMutableCharacteristic?
@@ -44,6 +45,14 @@ final class BLEPeripheralController: NSObject, ObservableObject {
         send(command)
     }
 
+    func toggleFast() {
+        send(executionMode.isFastEnabled ? .fastOff : .fast)
+    }
+
+    func toggleDeep() {
+        send(executionMode.isDeepEnabled ? .deepOff : .deep)
+    }
+
     private func publishService() {
         let command = CBMutableCharacteristic(
             type: CodexBLE.commandUUID,
@@ -75,6 +84,9 @@ final class BLEPeripheralController: NSObject, ObservableObject {
         }
         if data.count > 2, let nextModel = CodexModel(rawValue: data[data.startIndex + 2]) {
             model = nextModel
+        }
+        if data.count > 3, let nextMode = ExecutionMode(rawValue: data[data.startIndex + 3]) {
+            executionMode = nextMode
         }
     }
 

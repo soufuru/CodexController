@@ -11,6 +11,8 @@ enum Command: UInt8 {
     case fast = 0x01
     case normal = 0x02
     case deep = 0x03
+    case fastOff = 0x04
+    case deepOff = 0x05
     case newTask = 0x10
     case review = 0x11
     case stop = 0x12
@@ -38,6 +40,36 @@ enum Effort: UInt8 {
     case unknown = 0x00, low = 0x01, medium = 0x02, high = 0x03, xhigh = 0x04
 }
 
+enum ExecutionMode: UInt8 {
+    case unknown = 0x00, standard = 0x01, fast = 0x02, deep = 0x03, fastAndDeep = 0x04
+
+    var isFastEnabled: Bool {
+        self == .fast || self == .fastAndDeep
+    }
+
+    var isDeepEnabled: Bool {
+        self == .deep || self == .fastAndDeep
+    }
+
+    func settingFast(_ enabled: Bool) -> ExecutionMode {
+        switch (enabled, isDeepEnabled) {
+        case (true, true): .fastAndDeep
+        case (true, false): .fast
+        case (false, true): .deep
+        case (false, false): .standard
+        }
+    }
+
+    func settingDeep(_ enabled: Bool) -> ExecutionMode {
+        switch (isFastEnabled, enabled) {
+        case (true, true): .fastAndDeep
+        case (true, false): .fast
+        case (false, true): .deep
+        case (false, false): .standard
+        }
+    }
+}
+
 enum ModelChoice: UInt8 {
     case unknown = 0x00, sol = 0x01, terra = 0x02, luna = 0x03
 
@@ -55,6 +87,7 @@ struct StatusPacket: Equatable {
     let status: BridgeStatus
     let effort: Effort
     let model: ModelChoice
+    let executionMode: ExecutionMode
 
-    var data: Data { Data([status.rawValue, effort.rawValue, model.rawValue]) }
+    var data: Data { Data([status.rawValue, effort.rawValue, model.rawValue, executionMode.rawValue]) }
 }

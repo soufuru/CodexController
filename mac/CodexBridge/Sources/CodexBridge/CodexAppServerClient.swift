@@ -24,6 +24,7 @@ final class CodexAppServerClient: @unchecked Sendable {
     private var selectedThreadID: String?
     private var effort: Effort = .unknown
     private var model: ModelChoice = .unknown
+    private var executionMode: ExecutionMode = .unknown
     private var status: BridgeStatus = .disconnected
     private var threadStatuses: [String: BridgeStatus] = [:]
 
@@ -250,14 +251,18 @@ final class CodexAppServerClient: @unchecked Sendable {
         switch command {
         case .fast:
             params["serviceTier"] = "priority"
+        case .fastOff:
+            params["serviceTier"] = NSNull()
         case .normal:
             params["serviceTier"] = NSNull()
             params["effort"] = "medium"
             effort = .medium
         case .deep:
-            params["serviceTier"] = NSNull()
             params["effort"] = "high"
             effort = .high
+        case .deepOff:
+            params["effort"] = "medium"
+            effort = .medium
         case .modelSol, .modelTerra, .modelLuna:
             guard let identifier = requestedModel?.identifier else {
                 return report(ClientError.malformedResponse)
@@ -273,6 +278,14 @@ final class CodexAppServerClient: @unchecked Sendable {
             switch result {
             case .success:
                 if let requestedModel { self.model = requestedModel }
+                switch command {
+                case .fast: self.executionMode = self.executionMode.settingFast(true)
+                case .fastOff: self.executionMode = self.executionMode.settingFast(false)
+                case .normal: self.executionMode = .standard
+                case .deep: self.executionMode = self.executionMode.settingDeep(true)
+                case .deepOff: self.executionMode = self.executionMode.settingDeep(false)
+                default: break
+                }
                 print("Applied \(command) to thread \(threadID)")
                 self.publishAggregate(fallback: .done)
             case .failure(let error): self.report(error)
@@ -356,6 +369,17 @@ final class CodexAppServerClient: @unchecked Sendable {
                let updatedModel = Self.modelChoice(for: identifier) {
                 model = updatedModel
             }
+            if let updatedEffort = Self.effort(for: settings["effort"] as? String) {
+                effort = updatedEffort
+            }
+            if effort != .unknown {
+                let fastEnabled = settings["serviceTier"] as? String == "priority"
+                let deepEnabled = effort == .high || effort == .xhigh
+                executionMode = fastEnabled
+                    ? (deepEnabled ? .fastAndDeep : .fast)
+                    : (deepEnabled ? .deep : .standard)
+            }
+            publish(status)
             print("Settings updated for \(threadID): model=\(settings["model"] ?? "nil") effort=\(settings["effort"] ?? "nil") serviceTier=\(settings["serviceTier"] ?? "nil")")
         } else if Self.isApprovalRequest(method) {
             updateThreadStatus(from: params, to: .awaitingApproval)
@@ -402,9 +426,24 @@ final class CodexAppServerClient: @unchecked Sendable {
         [.sol, .terra, .luna].first { $0.identifier == identifier }
     }
 
+    static func effort(for identifier: String?) -> Effort? {
+        switch identifier {
+        case "low": .low
+        case "medium": .medium
+        case "high": .high
+        case "xhigh": .xhigh
+        default: nil
+        }
+    }
+
     private func publish(_ nextStatus: BridgeStatus) {
         status = nextStatus
-        onStatus?(StatusPacket(status: nextStatus, effort: effort, model: model))
+        onStatus?(StatusPacket(
+            status: nextStatus,
+            effort: effort,
+            model: model,
+            executionMode: executionMode
+        ))
     }
 
     private func publishAggregate(fallback: BridgeStatus) {
